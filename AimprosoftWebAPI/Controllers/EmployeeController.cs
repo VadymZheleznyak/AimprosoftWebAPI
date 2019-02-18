@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using AimprosoftWebAPI.Models;
@@ -12,22 +11,16 @@ namespace AimprosoftWebAPI.Controllers
     [ApiController]
     public class EmployeeController : ControllerBase
     {
-        private readonly IService<Employee> _service;
+        private readonly IEmployeeService<Employee> _service;
 
-        public EmployeeController(IService<Employee> service)
+        public EmployeeController(IEmployeeService<Employee> service)
         {
             _service = service;
         }
 
-        [HttpGet]
-        public IEnumerable<Employee> GetEmployees() => _service.GetAll();
-
         [HttpGet("{id}")]
         public async Task<IActionResult> GetEmployee([FromRoute] int id)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             var employee = await _service.Get(id);
 
             if (employee == null)
@@ -39,12 +32,6 @@ namespace AimprosoftWebAPI.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutEmployee([FromRoute] int id, [FromBody] Employee employee)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            if (id != employee.Id)
-                return BadRequest();
-
             if (_service.CheckExisting(employee))
                 return Ok(new { Error = "Employee with this email is already exist" });
 
@@ -59,10 +46,7 @@ namespace AimprosoftWebAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> PostEmployee([FromBody] Employee employee)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            if(_service.CheckExisting(employee))
+            if (_service.CheckExisting(employee))
                 return Ok(new { Error = "Employee with this email is already exist" });
 
             await _service.Post(employee);
@@ -73,9 +57,6 @@ namespace AimprosoftWebAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEmployee([FromRoute] int id)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             var employee = await _service.Get(id);
 
             if (employee == null)
@@ -92,14 +73,14 @@ namespace AimprosoftWebAPI.Controllers
             var employees = new List<Employee>();
 
             if (!string.IsNullOrEmpty(searchKey))
-                employees = _service.GetByKey(searchKey);
+                employees = _service.GetByKey(searchKey, pagination.PageNumber, pagination.PageSize);
             else
-                employees = _service.GetAll().ToList();
+                employees = _service.GetForPaging(pagination.PageNumber, pagination.PageSize);
 
             if (employees.Count != 0)
             {
-                pagination.TotalRecords = employees.Count;
-                pagination.TotalPages = (int)Math.Ceiling(employees.Count() / (double)pagination.PageSize);
+                pagination.TotalRecords = _service.GetCount();
+                pagination.TotalPages = (int)Math.Ceiling(pagination.TotalRecords.Value / (double)pagination.PageSize);
             }
 
             return Ok(new { employees, pagination });
@@ -111,19 +92,12 @@ namespace AimprosoftWebAPI.Controllers
             var employees = new List<Employee>();
 
             if (departmentId != 0)
-                employees = _service.GetByRelationId(departmentId);
+                employees = _service.GetByRelationId(departmentId, pagination.PageNumber, pagination.PageSize);
             else
-                employees = _service.GetAll().ToList();
+                employees = _service.GetForPaging(pagination.PageNumber, pagination.PageSize);
 
-            pagination.TotalRecords = employees.Count;
-
-            if (pagination.PageNumber > 1)
-                employees = employees.Skip((pagination.PageNumber - 1) * pagination.PageSize)
-                .Take(pagination.PageSize).ToList();
-            else
-                employees = employees.Take(pagination.PageSize).ToList();
-
-            pagination.TotalPages = (int)Math.Ceiling(employees.Count() / (double)pagination.PageSize);
+            pagination.TotalRecords = _service.GetCount();
+            pagination.TotalPages = (int)Math.Ceiling(pagination.TotalRecords.Value / (double)pagination.PageSize);
 
             if (pagination.PageNumber > pagination.TotalPages)
                 pagination.PageNumber = pagination.TotalPages.Value;

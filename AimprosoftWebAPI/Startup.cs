@@ -30,8 +30,8 @@ namespace AimprosoftWebAPI
                     if (resolver != null)
                         (resolver as DefaultContractResolver).NamingStrategy = null;
                 });
-            services.AddScoped<IService<Department>, DepartmentService>();
-            services.AddScoped<IService<Employee>, EmployeeService>();
+            services.AddScoped<IDepartmentService<Department>, DepartmentService>();
+            services.AddScoped<IEmployeeService<Employee>, EmployeeService>();
 
             services.AddDbContext<DepartmentContext>(options =>
             options.UseSqlServer(Configuration.GetConnectionString("DevConnection")));

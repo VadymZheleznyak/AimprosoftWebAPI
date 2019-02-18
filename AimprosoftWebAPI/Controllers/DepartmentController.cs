@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using AimprosoftWebAPI.Models;
@@ -12,22 +11,16 @@ namespace AimprosoftWebAPI.Controllers
     [ApiController]
     public class DepartmentController : ControllerBase
     {
-        private readonly IService<Department> _service;
+        private readonly IDepartmentService<Department> _service;
 
-        public DepartmentController(IService<Department> service)
+        public DepartmentController(IDepartmentService<Department> service)
         {
             _service = service;
         }
 
-        [HttpGet]
-        public IEnumerable<Department> GetDepartments() => _service.GetAll();
-
         [HttpGet("{id}")]
         public async Task<IActionResult> GetDepartment([FromRoute] int id)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             var department = await _service.Get(id);
 
             if (department == null)
@@ -39,12 +32,6 @@ namespace AimprosoftWebAPI.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutDepartment([FromRoute] int id, [FromBody] Department department)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            if (id != department.Id)
-                return BadRequest();
-
             if (_service.CheckExisting(department))
                 return Ok(new { Error = "Department with this name is already exist" });
 
@@ -59,9 +46,6 @@ namespace AimprosoftWebAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> PostDepartment([FromBody] Department department)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             if (_service.CheckExisting(department))
                 return Ok(new { Error = "Department with this name is already exist" });
 
@@ -73,9 +57,6 @@ namespace AimprosoftWebAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteDepartment([FromRoute] int id)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             var department = await _service.Get(id);
 
             if (department == null)
@@ -90,16 +71,9 @@ namespace AimprosoftWebAPI.Controllers
         [HttpPost("index")]
         public IActionResult PostDepartmentIndex(Pagination pagination)
         {
-            var departments = _service.GetAll().ToList();
-            pagination.TotalRecords = departments.Count;
-
-            if (pagination.PageNumber > 1)
-                departments = departments.Skip((pagination.PageNumber - 1) * pagination.PageSize)
-                .Take(pagination.PageSize).ToList();
-            else
-                departments = departments.Take(pagination.PageSize).ToList();
-
-            pagination.TotalPages = (int)Math.Ceiling(departments.Count() / (double)pagination.PageSize);
+            var departments = _service.GetForPaging(pagination.PageNumber, pagination.PageSize);
+            pagination.TotalRecords = _service.GetCount();
+            pagination.TotalPages = (int)Math.Ceiling(pagination.TotalRecords.Value / (double)pagination.PageSize);
 
             if (pagination.PageNumber > pagination.TotalPages)
                 pagination.PageNumber = pagination.TotalPages.Value;
@@ -113,14 +87,14 @@ namespace AimprosoftWebAPI.Controllers
             var departments = new List<Department>();
 
             if (!string.IsNullOrEmpty(searchKey))
-                departments = _service.GetByKey(searchKey);
+                departments = _service.GetByKey(searchKey, pagination.PageNumber, pagination.PageSize);
             else
-                departments = _service.GetAll().ToList();
+                departments = _service.GetForPaging(pagination.PageNumber, pagination.PageSize);
 
             if (departments.Count != 0)
             {
-                pagination.TotalRecords = departments.Count;
-                pagination.TotalPages = (int)Math.Ceiling(departments.Count() / (double)pagination.PageSize);
+                pagination.TotalRecords = _service.GetCount();
+                pagination.TotalPages = (int)Math.Ceiling(pagination.TotalRecords.Value / (double)pagination.PageSize);
             }
 
             return Ok(new { departments, pagination });

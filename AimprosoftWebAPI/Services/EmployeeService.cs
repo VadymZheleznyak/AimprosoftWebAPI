@@ -1,14 +1,13 @@
 ﻿using AimprosoftWebAPI.Interfaces;
 using AimprosoftWebAPI.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace AimprosoftWebAPI.Services
 {
-    public class EmployeeService : IService<Employee>
+    public class EmployeeService : IEmployeeService<Employee>
     {
         private readonly DepartmentContext _context;
 
@@ -52,18 +51,23 @@ namespace AimprosoftWebAPI.Services
             await _context.SaveChangesAsync();
         }
 
-        public List<Employee> GetByKey(string searchKey) => _context.Employees.Where(x => x.FirstName.ToLower().Contains(searchKey)
-                                            || x.LastName.ToLower().Contains(searchKey)
+        public List<Employee> GetByKey(string searchKey, int pageNumber, int pageSize) => _context.Employees.Where(x => x.FirstName.ToLower()
+                                            .Contains(searchKey)|| x.LastName.ToLower().Contains(searchKey)
                                             || x.Email.ToLower().Contains(searchKey)
                                             || x.Salary.ToString().Contains(searchKey)
                                             || x.JobStartDate.Year.ToString().Contains(searchKey)
                                             || x.JobStartDate.Month.ToString().Contains(searchKey)
-                                            || x.JobStartDate.Day.ToString().Contains(searchKey)).ToList();
+                                            || x.JobStartDate.Day.ToString().Contains(searchKey)).Skip((pageNumber - 1) * pageSize)
+                                            .Take(pageSize).ToList();
 
-        public List<Employee> GetByRelationId(int id) => _context.Employees.Where(x => x.DepartmentId == id).ToList();
+        public List<Employee> GetByRelationId(int id, int pageNumber, int pageSize) => _context.Employees.Where(x => x.DepartmentId == id)
+                                                                                       .Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
-        public bool CheckExisting(Employee employee) => _context.Employees.Any(e => e.Email == employee.Email);
+        public bool CheckExisting(Employee employee) => _context.Employees.Any(e => e.Email == employee.Email && e.Id != employee.Id);
 
         public int GetCount() => _context.Employees.Count();
+
+        public List<Employee> GetForPaging(int pageNumber, int pageSize) => _context.Employees.Skip((pageNumber - 1) *
+                                                                                        pageSize).Take(pageSize).ToList();
     }
 }

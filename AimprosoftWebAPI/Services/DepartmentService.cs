@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AimprosoftWebAPI.Services
 {
-    public class DepartmentService : IService<Department>
+    public class DepartmentService : IDepartmentService<Department>
     {
         private readonly DepartmentContext _context;
 
@@ -51,13 +51,15 @@ namespace AimprosoftWebAPI.Services
             await _context.SaveChangesAsync();
         }
 
-        public List<Department> GetByKey(string searchKey) => _context.Departments.Where(x => x.Name.ToLower().Contains(searchKey)
-                                                                                    || x.KindOfWork.ToLower().Contains(searchKey)
-                                                                                    || x.City.ToLower().Contains(searchKey)).ToList();
+        public List<Department> GetByKey(string searchKey, int pageNumber, int pageSize) => _context.Departments.Where(x => x.Name.ToLower()
+                                                                                    .Contains(searchKey) || x.KindOfWork.ToLower()
+                                                                                    .Contains(searchKey) || x.City.ToLower().Contains(searchKey))
+                                                                                    .Skip((pageNumber - 1) *pageSize).Take(pageSize).ToList();
 
-        public List<Department> GetByRelationId(int id) => new List<Department>();
+        public bool CheckExisting(Department department) => _context.Departments.Any(d => d.Name == department.Name && d.Id != department.Id);
 
-        public bool CheckExisting(Department department) => _context.Departments.Any(e => e.Name == department.Name);
+        public List<Department> GetForPaging(int pageNumber, int pageSize) => _context.Departments.Skip((pageNumber - 1) *
+                                                                                        pageSize).Take(pageSize).ToList();
 
         public int GetCount() => _context.Departments.Count();
     }
